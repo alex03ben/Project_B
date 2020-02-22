@@ -15,6 +15,7 @@ public class PlayerInput : MonoBehaviour
     private const string axisSourisVertical = "Mouse Y";
 
     private const string jumpInput = "Jump";
+    private const string crouchInput = "Crouch";
 
     public Vector3 getMoveInput()
     {
@@ -39,6 +40,16 @@ public class PlayerInput : MonoBehaviour
     public bool getInputJump()
     {
         return Input.GetButtonDown(jumpInput);
+    }
+
+    public bool getInputCrouchDown()
+    {
+        return Input.GetButtonDown(crouchInput);
+    }
+
+    public bool getInputCrouchUp()
+    {
+        return Input.GetButtonUp(crouchInput);
     }
 
     float GetMouseOrStickLookAxis(string mouseInputName)

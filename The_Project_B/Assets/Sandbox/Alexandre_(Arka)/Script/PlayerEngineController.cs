@@ -12,21 +12,26 @@ public class PlayerEngineController : MonoBehaviour
     [Header("Déplacement")]
     [Tooltip("Vitesse maximum lorsque le joueur est sur le sol et qu'il ne sprint pas")]
     public float vitesseNormale = 10f;
-    [Tooltip("Vitesse maximum du sprint")]
-    public float vitesseSprint = 5f;
     [Tooltip("Vitesse du ralentissement au sol, permet d'avoir une fluidité sur les mouvement et un meilleur feeling")]
     public float vitesseRalentissement = 100f;
     [Tooltip("Force de la gravité")]
     public float forceGravite = 20f;
+    [Tooltip("Coefficient de reduction de la vitesse lorsque le joueur est accroupi ")]
+    public float coefReducteur = 0.2f;
 
 
     [Header("Saut")]
     [Tooltip("Force du saut")]
     public float forceSaut = 9f;
+    [Tooltip("Force pour l'air controle")]
+    public float forceAirControle = 10f;
+    [Tooltip("Vitesse du controle dans les air")]
+    public float vitesseAirControle = 15f;
     [Tooltip("Layer sur la quel on va check si le joueur touche le sol ou pas wesh tmtc")]
     public LayerMask layerGroundCheck = -1;
     [Tooltip("La distance avant de check si le joueur touche le sol")]
     public float groundCheckDistance = 0.05f;
+
 
 
     [Header("Souris")]
@@ -34,6 +39,8 @@ public class PlayerEngineController : MonoBehaviour
     public float rotationSpeedCam = 200f;
 
     private Vector3 normalGround;
+    private float saveVitesseMarche = 0f;
+    private Vector3 saveCameraPosition;
     private PlayerInput playerInput;
     private CharacterController characterController;
 
@@ -55,8 +62,10 @@ public class PlayerEngineController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        groundCheck();
+        //groundCheck();
 
+        isGrounded = characterController.isGrounded;
+        print("grounded: " + isGrounded);
         playerMouvement();
     }
 
@@ -65,7 +74,6 @@ public class PlayerEngineController : MonoBehaviour
         //=======================================================================CAMERA=========================================================
         // Rotation camera horizontale
         {
-            // rotate the transform with the input speed around its local Y axis
             transform.Rotate(new Vector3(0f, (playerInput.getLookInputHorizontal() * rotationSpeedCam), 0f), Space.Self);
         }
 
@@ -84,28 +92,51 @@ public class PlayerEngineController : MonoBehaviour
 
             if (isGrounded)
             {
-                
+
+                if (playerInput.getInputCrouchDown())
+                {
+                    saveVitesseMarche = vitesseNormale;
+                    saveCameraPosition = transform.localScale;
+
+                    transform.localScale = new Vector3(
+                        cameraPlayer.transform.position.x,
+                        cameraPlayer.transform.position.y - 1,
+                        cameraPlayer.transform.position.z
+                        );
+
+                    vitesseNormale = vitesseNormale * coefReducteur;
+                    print("CROUCH !!!!");
+                }else if (playerInput.getInputCrouchUp())
+                {
+                    transform.localScale = saveCameraPosition;
+                    vitesseNormale = saveVitesseMarche;
+                    print(" PLUS !! CROUCH !!!!");
+                }
+
                 Vector3 targetVelocity = playerPosition * vitesseNormale;
 
 
                 characterVelocity = Vector3.Lerp(characterVelocity, targetVelocity, vitesseRalentissement * Time.deltaTime);
 
-                
+
                 if (isGrounded && playerInput.getInputJump())
                 {
-                    characterVelocity = new Vector3(characterVelocity.x, 0f, characterVelocity.z);
+                    //characterVelocity = new Vector3(characterVelocity.x, 0f, characterVelocity.z);
                     characterVelocity += Vector3.up * forceSaut;
 
-                    //m_LastTimeJumped = Time.time;
-                    //hasJumpedThisFrame = true;
-
-                    isGrounded = false;
-                    //m_GroundNormal = Vector3.up;
+                    //isGrounded = false;
 
                 }
             }
             else
             {
+                characterVelocity += playerPosition * vitesseAirControle * Time.deltaTime;
+
+                float verticalVelocity = characterVelocity.y;
+                Vector3 horizontalVelocity = Vector3.ProjectOnPlane(characterVelocity, Vector3.up);
+                horizontalVelocity = Vector3.ClampMagnitude(horizontalVelocity, vitesseAirControle);
+
+                characterVelocity = horizontalVelocity + (Vector3.up * verticalVelocity);
                 characterVelocity += Vector3.down * forceGravite * Time.deltaTime;
             }
         }
@@ -118,22 +149,31 @@ public class PlayerEngineController : MonoBehaviour
 
     private void groundCheck()
     {
-        float checkGroundDistance = isGrounded ? (characterController.skinWidth + groundCheckDistance) : 1f;
+        float checkGroundDistance = isGrounded ? (characterController.skinWidth + groundCheckDistance) : 2f;
 
         isGrounded = false;
         normalGround = Vector3.up;
-        print("----- D1");
+        print("----- D1 : "+checkGroundDistance);
         if (Time.time >= lastTimeJump + 0.02f)
         {
             print("----- D2: ");
-            if (Physics.CapsuleCast(GetCapsuleBottomHemisphere(), GetCapsuleTopHemisphere(characterController.height), characterController.radius, Vector3.down, out RaycastHit hit, checkGroundDistance, layerGroundCheck, QueryTriggerInteraction.Ignore))
+            if (Physics.CapsuleCast(
+                GetCapsuleBottomHemisphere(),
+                GetCapsuleTopHemisphere(),
+                characterController.radius,
+                Vector3.down,
+                out RaycastHit hit,
+                groundCheckDistance,
+                layerGroundCheck,
+                QueryTriggerInteraction.Ignore
+                ))
             {
                 print("----- D3");
                 normalGround = hit.normal;
 
                 if (Vector3.Dot(hit.normal, transform.up) > 0 && IsNormalUnderSlopeLimit(normalGround))
                 {
-                    isGrounded = true; 
+                    isGrounded = true;
                     print("----- D4");
 
                     if (hit.distance > characterController.skinWidth)
@@ -146,19 +186,20 @@ public class PlayerEngineController : MonoBehaviour
         }
     }
 
-    Vector3 GetCapsuleBottomHemisphere()
+
+    private Vector3 GetCapsuleBottomHemisphere()
     {
         //print("test GetCapsuleBottomHemisphere = " + (transform.position + (transform.up * characterController.radius)));
-        return transform.position + (transform.up * characterController.radius);
+        return transform.position + Vector3.up * (characterController.radius + Physics.defaultContactOffset);
     }
 
-    Vector3 GetCapsuleTopHemisphere(float atHeight)
+    private Vector3 GetCapsuleTopHemisphere()
     {
         //print("test GetCapsuleTopHemisphere = " + (transform.position + (transform.up * (atHeight - characterController.radius))));
-        return transform.position + (transform.up * (atHeight - characterController.radius));
+        return transform.position + Vector3.up * (characterController.height - characterController.radius + Physics.defaultContactOffset);
     }
 
-    bool IsNormalUnderSlopeLimit(Vector3 normal)
+    private bool IsNormalUnderSlopeLimit(Vector3 normal)
     {
         return Vector3.Angle(transform.up, normal) <= characterController.slopeLimit;
     }
