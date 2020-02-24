@@ -4,5 +4,8 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Sandbox/Alexandre_(Arka)/Scene/TestMulti.unity
+    guid: b9e6df91f8aa77042b99e5ea7aa976a1
   m_configObjects: {}
