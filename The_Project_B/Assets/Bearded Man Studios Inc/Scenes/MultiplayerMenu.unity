@@ -867,7 +867,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: (h) Host (127.0.0.1:15937)
+  m_Text: (h) Host (91.170.58.68:15937)
 --- !u!222 &1853289101
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1363,7 +1363,7 @@ MonoBehaviour:
   useMainThreadManagerForRPCs: 1
   useInlineChat: 0
   getLocalNetworkConnections: 0
-  useTCP: 0
+  useTCP: 1
 --- !u!114 &2008293288
 MonoBehaviour:
   m_ObjectHideFlags: 0
